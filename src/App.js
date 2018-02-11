@@ -21,6 +21,7 @@ class App extends Component {
       searchKey: '',
       searchTerm: DEFAULT_QUERY,
       error: null,
+      isLoading: false,
     };
 
     this.needsToSearchTopStories = this.needsToSearchTopStories.bind(this);
@@ -47,12 +48,14 @@ class App extends Component {
       results: {
         ...results,
         [searchKey]: { hits: updatedHits, page }
-      }
+      },
+      isLoading: false
     });
   }
 
   async fetchSearchTopStories(searchTerm, page=0) {
     const url = `${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}`;
+    this.setState({ isLoading: true });
     try {
         const res = await axios.get(url);
         this.setSearchTopStories(res.data);
@@ -100,7 +103,7 @@ class App extends Component {
   }
 
   render() {
-    const { searchTerm, results, searchKey, error } = this.state;
+    const { searchTerm, results, searchKey, error, isLoading } = this.state;
     const page = (results && results[searchKey] && results[searchKey].page) || 0;
     const list = (results && results[searchKey] && results[searchKey].hits) || [];
 
@@ -128,28 +131,42 @@ class App extends Component {
             />
         }
 
-
-        <Button onClick={() => this.fetchSearchTopStories(searchKey, page + 1)}>
-          More
-        </Button>
-        
+        <div className="interactions">
+          <ButtonWithLoading
+            isLoading={isLoading}
+            onClick={() => this.fetchSearchTopStories(searchKey, page + 1)}
+          >
+            More
+          </ButtonWithLoading>
+        </div>
       </div>
     );
   }
 }
 
-const Search = ({ value, onChange, onSubmit }) => {
-  return (
-  <form onSubmit={onSubmit}>
-    <input 
-      type="text" 
-      value={value}
-      onChange={onChange}
-    />
-    <input type="submit" value="Search" />
-  </form>
-  );
-};
+class Search extends Component {
+  componentDidMount() {
+    if (this.input) {
+      this.input.focus();
+    }
+  }
+
+  render() {
+    const { value, onChange, onSubmit, children } = this.props;
+
+    return (
+      <form onSubmit={onSubmit}>
+        <input 
+          type="text" 
+          value={value}
+          onChange={onChange}
+          ref={(node) => { this.input = node; }}
+        />
+        <button type="submit">{ children }</button>
+      </form>
+    );
+  }
+}
   
    
   
@@ -174,7 +191,7 @@ const Table = ({ list, onDismiss }) =>
               {item.points}
             </span>
             <span style={{ width: '10%' }}>
-              <Button 
+              <Button
                 onClick={() =>onDismiss(item.objectID)}
                 className="button-inline"
               >
@@ -198,6 +215,18 @@ const Button = ({ onClick, className, children }) => {
     </button>
   );
 };
+
+const Loading = () => <div>Loading...</div>;
+
+const withLoading = (Component) => ({ isLoading, ...rest }) => {
+  return (
+    isLoading
+    ? <Loading/>
+    : <Component { ...rest } />
+  );
+};
+
+const ButtonWithLoading = withLoading(Button);
 
 Search.propTypes = {
   value: PropTypes.string,
